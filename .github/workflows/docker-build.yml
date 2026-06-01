@@ -54,7 +54,7 @@ jobs:
             PGV="${{ github.event.inputs.pg_version }}"
             # 只指定了主版本号时，自动映射到当前 minor 版本
             case "$PGV" in
-              18) DOCKER_TAG="18.4"; IMAGE_TAG="18" ;;
+              18) DOCKER_TAG="18.4"; IMAGE_TAG="18.4" ;;
               17) DOCKER_TAG="17.10"; IMAGE_TAG="17.10" ;;
               16) DOCKER_TAG="16.14"; IMAGE_TAG="16.14" ;;
               15) DOCKER_TAG="15.18"; IMAGE_TAG="15.18" ;;
@@ -64,7 +64,7 @@ jobs:
             MATRIX="{\"include\":[{\"pg_docker\":\"${DOCKER_TAG}\",\"pg_image_tag\":\"${IMAGE_TAG}\"}]}"
           else
             # 默认构建所有支持的版本
-            MATRIX="{\"include\":[{\"pg_docker\":\"18.4\",\"pg_image_tag\":\"18\"},{\"pg_docker\":\"17.10\",\"pg_image_tag\":\"17.10\"}]}"
+            MATRIX="{\"include\":[{\"pg_docker\":\"18.4\",\"pg_image_tag\":\"18.4\"},{\"pg_docker\":\"17.10\",\"pg_image_tag\":\"17.10\"}]}"
           fi
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           echo "Matrix: $MATRIX"
@@ -148,7 +148,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
             type=raw,value=${{ matrix.pg_image_tag }}-pgvector-${{ env.PGVECTOR_VERSION }}
-            type=raw,value=latest,enable=${{ matrix.pg_image_tag == '17.10' }}
+            type=raw,value=latest,enable=${{ matrix.pg_image_tag == '18.4' }}
           labels: |
             org.opencontainers.image.title=PostgreSQL + pgvector
             org.opencontainers.image.description=PostgreSQL ${{ matrix.pg_image_tag }} + pgvector ${{ env.PGVECTOR_VERSION }}

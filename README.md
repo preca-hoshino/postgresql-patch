@@ -28,7 +28,7 @@
 ### 从 GitHub Container Registry 拉取
 
 ```bash
-# 默认 PostgreSQL 17 + pgvector 0.8.2
+# 默认 PostgreSQL 18 + pgvector 0.8.2
 docker pull ghcr.io/preca-hoshino/postgresql-pgvector:latest
 ```
 
@@ -57,20 +57,20 @@ image: postgres:17.10-alpine
 image: ghcr.io/preca-hoshino/postgresql-pgvector:17.10-pgvector-0.8.2
 
 # PG 18 版
-image: ghcr.io/preca-hoshino/postgresql-pgvector:18-pgvector-0.8.2
+image: ghcr.io/preca-hoshino/postgresql-pgvector:18.4-pgvector-0.8.2
 ```
 
 ### 本地构建
 
 ```bash
-# 默认 PG 17 + pgvector 0.8.2
+# 默认 PG 18 + pgvector 0.8.2
 docker build -t postgresql-pgvector-patch ./build
 
-# PG 18 + pgvector 0.8.2
+# PG 17 + pgvector 0.8.2
 docker build \
   --build-arg PG_VERSION=18.4 \
   --build-arg PGVECTOR_VERSION=0.8.2 \
-  -t postgresql-pgvector-patch:18-pgvector-0.8.2 \
+  -t postgresql-pgvector-patch:18.4-pgvector-0.8.2 \
   ./build
 
 # 其他版本
@@ -178,7 +178,7 @@ LIMIT 5;
 
 | PG 版本 | Docker Hub 基础镜像 | 镜像标签 | 说明 |
 |---------|-------------------|----------|------|
-| 18.4 | `postgres:18.4-alpine` | `18-pgvector-0.8.2` | PostgreSQL 18 (最新) |
+| 18.4 | `postgres:18.4-alpine` | `18.4-pgvector-0.8.2` | PostgreSQL 18 (最新) |
 | 17.10 | `postgres:17.10-alpine` | `17.10-pgvector-0.8.2` | PostgreSQL 17 (推荐，与 1Panel 对齐) |
 | 16.14 | `postgres:16.14-alpine` | `16.14-pgvector-0.8.2` | PostgreSQL 16 |
 | 15.18 | `postgres:15.18-alpine` | `15.18-pgvector-0.8.2` | PostgreSQL 15 |

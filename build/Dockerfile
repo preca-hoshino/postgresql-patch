@@ -3,14 +3,14 @@
 # Added: pgvector extension for vector similarity search
 #
 # 用法:
-#   docker build --build-arg PG_VERSION=17.10 --build-arg PGVECTOR_VERSION=0.8.2 -t postgresql-pgvector-patch ./build
+#   docker build --build-arg PG_VERSION=18.4 --build-arg PGVECTOR_VERSION=0.8.2 -t postgresql-pgvector-patch ./build
 
-ARG PG_VERSION=17.10
+ARG PG_VERSION=18.4
 
 # ===== Stage 1: Build pgvector extension =====
 FROM postgres:${PG_VERSION}-alpine AS builder
 
-ARG PG_VERSION=17.10
+ARG PG_VERSION=18.4
 ARG PGVECTOR_VERSION=0.8.2
 
 RUN apk add --no-cache \
@@ -31,7 +31,7 @@ RUN apk add --no-cache \
 # ===== Stage 2: Final image =====
 FROM postgres:${PG_VERSION}-alpine
 
-ARG PG_VERSION=17.10
+ARG PG_VERSION=18.4
 ARG PGVECTOR_VERSION=0.8.2
 
 LABEL maintainer="PostgreSQL pgvector Patch Community"

@@ -82,7 +82,7 @@ services:
     # pgvector 版 (PG 17)
     image: ghcr.io/preca-hoshino/postgresql-pgvector:17.10-pgvector-0.8.2
     # pgvector 版 (PG 18)
-    # image: ghcr.io/preca-hoshino/postgresql-pgvector:18-pgvector-0.8.2
+    # image: ghcr.io/preca-hoshino/postgresql-pgvector:18.4-pgvector-0.8.2
     # 其余配置完全不变
 ```
 
@@ -269,7 +269,7 @@ ghcr.io/preca-hoshino/postgresql-pgvector:17.10-pgvector-0.8.2
 ghcr.io/preca-hoshino/postgresql-pgvector:16.14-pgvector-0.8.2
 ghcr.io/preca-hoshino/postgresql-pgvector:15.18-pgvector-0.8.2
 ghcr.io/preca-hoshino/postgresql-pgvector:14.23-pgvector-0.8.2
-ghcr.io/preca-hoshino/postgresql-pgvector:18-pgvector-0.8.2
+ghcr.io/preca-hoshino/postgresql-pgvector:18.4-pgvector-0.8.2
 ```
 
 ### 7.4 手动触发构建
