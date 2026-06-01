@@ -80,9 +80,9 @@ services:
     # 原版
     # image: postgres:17.10-alpine
     # pgvector 版 (PG 17)
-    image: ghcr.io/preca-hoshino/postgresql-pgvector:17.10-pgvector-0.8.2
+    image: ghcr.io/preca-hoshino/postgresql-pgvector-patch:17.10-alpine-pgvector-0.8.2
     # pgvector 版 (PG 18)
-    # image: ghcr.io/preca-hoshino/postgresql-pgvector:18.4-pgvector-0.8.2
+    # image: ghcr.io/preca-hoshino/postgresql-pgvector-patch:18.4-alpine-pgvector-0.8.2
     # 其余配置完全不变
 ```
 
@@ -104,7 +104,7 @@ docker stop postgres
 # 3. 启动新容器 (使用 pgvector 镜像，挂载相同的 data volume)
 docker run -d \
   -v pgdata:/var/lib/postgresql/data \
-  ghcr.io/preca-hoshino/postgresql-pgvector:17.10-pgvector-0.8.2
+  ghcr.io/preca-hoshino/postgresql-pgvector-patch:17.10-alpine-pgvector-0.8.2
 
 # 4. 进入容器启用扩展
 docker exec -it postgres psql -U user -d mydb
@@ -264,12 +264,12 @@ git push -u origin main
 ### 7.3 镜像标签
 
 ```
-ghcr.io/preca-hoshino/postgresql-pgvector:latest
-ghcr.io/preca-hoshino/postgresql-pgvector:17.10-pgvector-0.8.2
-ghcr.io/preca-hoshino/postgresql-pgvector:16.14-pgvector-0.8.2
-ghcr.io/preca-hoshino/postgresql-pgvector:15.18-pgvector-0.8.2
-ghcr.io/preca-hoshino/postgresql-pgvector:14.23-pgvector-0.8.2
-ghcr.io/preca-hoshino/postgresql-pgvector:18.4-pgvector-0.8.2
+ghcr.io/preca-hoshino/postgresql-pgvector-patch:latest
+ghcr.io/preca-hoshino/postgresql-pgvector-patch:18.4-alpine-pgvector-0.8.2
+ghcr.io/preca-hoshino/postgresql-pgvector-patch:17.10-alpine-pgvector-0.8.2
+ghcr.io/preca-hoshino/postgresql-pgvector-patch:16.14-alpine-pgvector-0.8.2
+ghcr.io/preca-hoshino/postgresql-pgvector-patch:15.18-alpine-pgvector-0.8.2
+ghcr.io/preca-hoshino/postgresql-pgvector-patch:14.23-alpine-pgvector-0.8.2
 ```
 
 ### 7.4 手动触发构建
@@ -285,7 +285,7 @@ ghcr.io/preca-hoshino/postgresql-pgvector:18.4-pgvector-0.8.2
 
 ```bash
 # 拉取镜像
-docker pull ghcr.io/preca-hoshino/postgresql-pgvector:latest
+docker pull ghcr.io/preca-hoshino/postgresql-pgvector-patch:latest
 
 # 运行
 docker run -d \
@@ -295,7 +295,7 @@ docker run -d \
   -e POSTGRES_DB=mydb \
   -v pgdata:/var/lib/postgresql/data \
   --name postgresql-pgvector \
-  ghcr.io/preca-hoshino/postgresql-pgvector:latest
+  ghcr.io/preca-hoshino/postgresql-pgvector-patch:latest
 ```
 
 ---

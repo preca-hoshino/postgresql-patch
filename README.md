@@ -4,8 +4,8 @@
 
 基于 [1Panel PostgreSQL Dockerfile](https://github.com/1Panel-dev/appstore/tree/dev/apps/postgresql)（使用官方 `postgres:alpine` 镜像），在构建时编译并集成 pgvector 扩展，开箱即用支持向量存储和相似度搜索。
 
-> 版本命名对齐 1Panel appstore：`{pg_version}-pgvector-{pgvector_version}`
-> 例：`17.10-pgvector-0.8.2`
+> 版本命名对齐 1Panel appstore：`{pg_version}-alpine-pgvector-{pgvector_version}`
+> 例：`17.10-alpine-pgvector-0.8.2`
 
 ## 特性
 
@@ -29,7 +29,7 @@
 
 ```bash
 # 默认 PostgreSQL 18 + pgvector 0.8.2
-docker pull ghcr.io/preca-hoshino/postgresql-pgvector:latest
+docker pull ghcr.io/preca-hoshino/postgresql-pgvector-patch:latest
 ```
 
 ### 运行
@@ -42,7 +42,7 @@ docker run -d \
   -e POSTGRES_DB=mydb \
   -v pgdata:/var/lib/postgresql/data \
   --name postgresql-pgvector \
-  ghcr.io/preca-hoshino/postgresql-pgvector:latest
+  ghcr.io/preca-hoshino/postgresql-pgvector-patch:latest
 ```
 
 ### 在 1Panel 中使用
@@ -54,10 +54,10 @@ docker run -d \
 image: postgres:17.10-alpine
 
 # pgvector 版
-image: ghcr.io/preca-hoshino/postgresql-pgvector:17.10-pgvector-0.8.2
+image: ghcr.io/preca-hoshino/postgresql-pgvector-patch:17.10-alpine-pgvector-0.8.2
 
 # PG 18 版
-image: ghcr.io/preca-hoshino/postgresql-pgvector:18.4-pgvector-0.8.2
+image: ghcr.io/preca-hoshino/postgresql-pgvector-patch:18.4-alpine-pgvector-0.8.2
 ```
 
 ### 本地构建
@@ -70,14 +70,14 @@ docker build -t postgresql-pgvector-patch ./build
 docker build \
   --build-arg PG_VERSION=18.4 \
   --build-arg PGVECTOR_VERSION=0.8.2 \
-  -t postgresql-pgvector-patch:18.4-pgvector-0.8.2 \
+  -t postgresql-pgvector-patch:18.4-alpine-pgvector-0.8.2 \
   ./build
 
 # 其他版本
 docker build \
   --build-arg PG_VERSION=16.14 \
   --build-arg PGVECTOR_VERSION=0.8.2 \
-  -t postgresql-pgvector-patch:16.14-pgvector-0.8.2 \
+  -t postgresql-pgvector-patch:16.14-alpine-pgvector-0.8.2 \
   ./build
 ```
 
@@ -178,11 +178,11 @@ LIMIT 5;
 
 | PG 版本 | Docker Hub 基础镜像 | 镜像标签 | 说明 |
 |---------|-------------------|----------|------|
-| 18.4 | `postgres:18.4-alpine` | `18.4-pgvector-0.8.2` | PostgreSQL 18 (最新) |
-| 17.10 | `postgres:17.10-alpine` | `17.10-pgvector-0.8.2` | PostgreSQL 17 (推荐，与 1Panel 对齐) |
-| 16.14 | `postgres:16.14-alpine` | `16.14-pgvector-0.8.2` | PostgreSQL 16 |
-| 15.18 | `postgres:15.18-alpine` | `15.18-pgvector-0.8.2` | PostgreSQL 15 |
-| 14.23 | `postgres:14.23-alpine` | `14.23-pgvector-0.8.2` | PostgreSQL 14 |
+| 18.4 | `postgres:18.4-alpine` | `18.4-alpine-pgvector-0.8.2` | PostgreSQL 18 (最新) |
+| 17.10 | `postgres:17.10-alpine` | `17.10-alpine-pgvector-0.8.2` | PostgreSQL 17 (推荐，与 1Panel 对齐) |
+| 16.14 | `postgres:16.14-alpine` | `16.14-alpine-pgvector-0.8.2` | PostgreSQL 16 |
+| 15.18 | `postgres:15.18-alpine` | `15.18-alpine-pgvector-0.8.2` | PostgreSQL 15 |
+| 14.23 | `postgres:14.23-alpine` | `14.23-alpine-pgvector-0.8.2` | PostgreSQL 14 |
 
 ## CI/CD
 
