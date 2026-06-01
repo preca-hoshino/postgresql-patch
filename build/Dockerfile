@@ -1,9 +1,9 @@
-# Dockerfile - PostgreSQL + pgvector (向量相似度搜索扩展)
+# Dockerfile - PostgreSQL + pgvector + 内置扩展
 # Based on https://github.com/1Panel-dev/appstore/tree/dev/apps/postgresql
-# Added: pgvector extension for vector similarity search
+# Added: pgvector (向量搜索) + pg_stat_statements, pg_trgm, pgcrypto, hstore
 #
 # 用法:
-#   docker build --build-arg PG_VERSION=18.4 --build-arg PGVECTOR_VERSION=0.8.2 -t postgresql-pgvector-patch ./build
+#   docker build --build-arg PG_VERSION=18.4 --build-arg PGVECTOR_VERSION=0.8.2 -t postgresql-patch ./build
 
 ARG PG_VERSION=18.4
 
@@ -35,9 +35,9 @@ ARG PG_VERSION=18.4
 ARG PGVECTOR_VERSION=0.8.2
 
 LABEL maintainer="PostgreSQL pgvector Patch Community"
-LABEL description="PostgreSQL ${PG_VERSION} + pgvector ${PGVECTOR_VERSION} — 基于 1Panel PostgreSQL 镜像，预装向量相似度搜索扩展"
+LABEL description="PostgreSQL ${PG_VERSION} + pgvector ${PGVECTOR_VERSION} + 内置扩展 — 基于 1Panel PostgreSQL 镜像"
 LABEL org.opencontainers.image.title="PostgreSQL pgvector"
-LABEL org.opencontainers.image.description="PostgreSQL ${PG_VERSION} + pgvector ${PGVECTOR_VERSION} for 1Panel"
+LABEL org.opencontainers.image.description="PostgreSQL ${PG_VERSION} + pgvector ${PGVECTOR_VERSION} + pg_stat_statements/pg_trgm/pgcrypto/hstore for 1Panel"
 LABEL org.opencontainers.image.version="${PG_VERSION}-pgvector-${PGVECTOR_VERSION}"
 LABEL pg.version="${PG_VERSION}"
 LABEL pgvector.version="${PGVECTOR_VERSION}"
@@ -47,7 +47,12 @@ COPY --from=builder /tmp/pgvector-build/*.so /usr/local/lib/postgresql/
 COPY --from=builder /tmp/pgvector-build/*.control /usr/local/share/postgresql/extension/
 COPY --from=builder /tmp/pgvector-build/*.sql /usr/local/share/postgresql/extension/
 
-# Copy init script to auto-create pgvector extension
+# Enable pg_stat_statements in shared_preload_libraries (required for full functionality)
+RUN sed -i "s/#shared_preload_libraries = ''/shared_preload_libraries = 'pg_stat_statements'/" \
+        /usr/local/share/postgresql/postgresql.conf.sample \
+    && echo "pg_stat_statements.track = all" >> /usr/local/share/postgresql/postgresql.conf.sample
+
+# Copy init script to auto-create extensions
 COPY init-pgvector.sh /docker-entrypoint-initdb.d/01-pgvector.sh
 
 # Verify pgvector is loadable
