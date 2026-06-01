@@ -218,20 +218,40 @@ jobs:
         run: |
           CONTAINER="pgvec-test-pg${{ matrix.pg_image_tag }}"
           IMAGE="${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-pgvector-${{ env.PGVECTOR_VERSION }}"
-          docker run --rm -e POSTGRES_PASSWORD=test \
+          # 不用 --rm，方便失败时检查日志
+          docker run -e POSTGRES_PASSWORD=test \
             -d --name "$CONTAINER" "$IMAGE"
-          # Wait for PostgreSQL to start
-          for i in $(seq 1 30); do
-            docker exec "$CONTAINER" pg_isready -U postgres 2>/dev/null && break
+          # 等待 PostgreSQL 完全初始化（检测日志而非仅端口）
+          echo "Waiting for PostgreSQL to fully initialize..."
+          for i in $(seq 1 60); do
+            if docker logs "$CONTAINER" 2>&1 | grep -q "database system is ready to accept connections"; then
+              echo "PostgreSQL fully initialized after ${i}s"
+              break
+            fi
+            # 检查容器是否还在运行
+            if ! docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null | grep -q true; then
+              echo "::error::Container exited prematurely!"
+              docker logs "$CONTAINER" 2>&1 | tail -30
+              exit 1
+            fi
             sleep 1
           done
+          # 再等 2 秒确保稳定
+          sleep 2
+          if ! docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null | grep -q true; then
+            echo "::error::Container exited after init!"
+            docker logs "$CONTAINER" 2>&1 | tail -30
+            exit 1
+          fi
           echo "--- pgvector extension ---"
           docker exec "$CONTAINER" psql -U postgres -c \
             "CREATE EXTENSION IF NOT EXISTS vector; SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
           echo "--- vector type test ---"
           docker exec "$CONTAINER" psql -U postgres -c \
             "SELECT '[1,2,3]'::vector;"
-          docker stop "$CONTAINER"
+          echo "--- cleanup ---"
+          docker stop "$CONTAINER" || true
+          docker rm "$CONTAINER" || true
 
       - name: "verify / postgresql"
         run: |
