@@ -217,19 +217,19 @@ jobs:
       - name: "verify / pgvector extension"
         run: |
           CONTAINER="pgvec-test-pg${{ matrix.pg_image_tag }}"
-          docker run --rm -e POSTGRES_PASSWORD=test -e POSTGRES_DB=testdb \
-            -d --name "$CONTAINER" \
-            "${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-pgvector-${{ env.PGVECTOR_VERSION }}"
+          IMAGE="${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-pgvector-${{ env.PGVECTOR_VERSION }}"
+          docker run --rm -e POSTGRES_PASSWORD=test \
+            -d --name "$CONTAINER" "$IMAGE"
           # Wait for PostgreSQL to start
           for i in $(seq 1 30); do
             docker exec "$CONTAINER" pg_isready -U postgres 2>/dev/null && break
             sleep 1
           done
           echo "--- pgvector extension ---"
-          docker exec "$CONTAINER" psql -U postgres -d testdb -c \
-            "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
+          docker exec "$CONTAINER" psql -U postgres -c \
+            "CREATE EXTENSION IF NOT EXISTS vector; SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
           echo "--- vector type test ---"
-          docker exec "$CONTAINER" psql -U postgres -d testdb -c \
+          docker exec "$CONTAINER" psql -U postgres -c \
             "SELECT '[1,2,3]'::vector;"
           docker stop "$CONTAINER"
 
