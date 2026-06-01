@@ -17,7 +17,7 @@ RUN apk add --no-cache \
         build-base \
         postgresql-dev \
         git \
-    && sed -i 's/^with_llvm = yes/with_llvm = no/' /usr/local/lib/postgresql/pgxs/src/Makefile.global \
+    && sed -i 's/with_llvm[[:space:]]*=[[:space:]]*yes/with_llvm = no/g' /usr/local/lib/postgresql/pgxs/src/Makefile.global \
     && cd /tmp \
     && git clone --branch v${PGVECTOR_VERSION} --depth 1 https://github.com/pgvector/pgvector.git \
     && cd pgvector \
