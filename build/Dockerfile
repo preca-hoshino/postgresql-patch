@@ -16,6 +16,8 @@ ARG PGVECTOR_VERSION=0.8.2
 RUN apk add --no-cache \
         build-base \
         postgresql-dev \
+        clang \
+        llvm-dev \
         git \
     && cd /tmp \
     && git clone --branch v${PGVECTOR_VERSION} --depth 1 https://github.com/pgvector/pgvector.git \
