@@ -64,7 +64,7 @@ jobs:
             MATRIX="{\"include\":[{\"pg_docker\":\"${DOCKER_TAG}\",\"pg_image_tag\":\"${IMAGE_TAG}\"}]}"
           else
             # 默认构建所有支持的版本
-            MATRIX="{\"include\":[{\"pg_docker\":\"18.4\",\"pg_image_tag\":\"18.4\"},{\"pg_docker\":\"17.10\",\"pg_image_tag\":\"17.10\"}]}"
+            MATRIX="{\"include\":[{\"pg_docker\":\"18.4\",\"pg_image_tag\":\"18.4\"},{\"pg_docker\":\"17.10\",\"pg_image_tag\":\"17.10\"},{\"pg_docker\":\"16.14\",\"pg_image_tag\":\"16.14\"},{\"pg_docker\":\"15.18\",\"pg_image_tag\":\"15.18\"},{\"pg_docker\":\"14.23\",\"pg_image_tag\":\"14.23\"}]}"
           fi
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           echo "Matrix: $MATRIX"
