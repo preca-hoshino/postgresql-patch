@@ -4,12 +4,14 @@
 
 set -e
 
-echo "[pgvector] Enabling vector extension for all databases..."
+DB_NAME="${POSTGRES_DB:-postgres}"
+
+echo "[pgvector] Enabling vector extension in database: $DB_NAME"
 
 # 在默认数据库中启用 pgvector
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
     CREATE EXTENSION IF NOT EXISTS vector;
     SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';
 EOSQL
 
-echo "[pgvector] Extension 'vector' enabled successfully in database: $POSTGRES_DB"
+echo "[pgvector] Extension 'vector' enabled successfully in database: $DB_NAME"
