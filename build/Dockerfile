@@ -19,6 +19,7 @@ RUN apk add --no-cache \
         clang \
         llvm-dev \
         git \
+    && ln -sf /usr/bin/clang /usr/local/bin/clang-19 \
     && cd /tmp \
     && git clone --branch v${PGVECTOR_VERSION} --depth 1 https://github.com/pgvector/pgvector.git \
     && cd pgvector \
