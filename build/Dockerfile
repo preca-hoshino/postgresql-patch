@@ -16,10 +16,8 @@ ARG PGVECTOR_VERSION=0.8.2
 RUN apk add --no-cache \
         build-base \
         postgresql-dev \
-        clang \
-        llvm-dev \
         git \
-    && ln -sf /usr/bin/clang /usr/local/bin/clang-19 \
+    && sed -i 's/^with_llvm = yes/with_llvm = no/' /usr/local/lib/postgresql/pgxs/src/Makefile.global \
     && cd /tmp \
     && git clone --branch v${PGVECTOR_VERSION} --depth 1 https://github.com/pgvector/pgvector.git \
     && cd pgvector \
