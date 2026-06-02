@@ -33,6 +33,7 @@ RUN apk add --no-cache \
         json-c-dev \
         libxml2-dev \
         sqlite-dev \
+        curl \
         curl-dev \
         tiff-dev \
     && sed -i 's/with_llvm[[:space:]]*=[[:space:]]*yes/with_llvm = no/g' /usr/local/lib/postgresql/pgxs/src/Makefile.global \
