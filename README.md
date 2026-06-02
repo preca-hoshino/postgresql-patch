@@ -1,19 +1,34 @@
-# PostgreSQL + pgvector
+# PostgreSQL Patch — 常用扩展预编译镜像
 
-基于 [1Panel PostgreSQL Dockerfile](https://github.com/1Panel-dev/appstore/tree/dev/apps/postgresql)，在构建时编译并集成 [pgvector](https://github.com/pgvector/pgvector) 扩展，提供向量存储与相似度搜索能力，同时预装常用内置扩展，保持与 1Panel PostgreSQL 100% 兼容。
+基于 [1Panel PostgreSQL Dockerfile](https://github.com/1Panel-dev/appstore/tree/dev/apps/postgresql)，在构建时预编译并集成一组常用 PostgreSQL 扩展，涵盖向量搜索、表膨胀清理、执行计划干预、定时任务、地理空间等能力，同时保持与 1Panel PostgreSQL 100% 兼容。
 
-版本标签格式: `{pg_version}-alpine-pgvector-{pgvector_version}`
+镜像标签格式: `{pg_version}-alpine-patch`
 
 ## 概览
 
-| 组件 | 版本 | 说明 |
+### 默认编译扩展
+
+| 扩展 | 版本 | 用途 |
 |------|------|------|
-| PostgreSQL | 14 / 15 / 16 / 17 / 18 | 基础数据库 |
-| pgvector | 0.8.2 | 向量相似度搜索 (编译安装) |
-| pg_stat_statements | 内置 | SQL 执行统计与性能分析 |
-| pg_trgm | 内置 | 模糊文本搜索 (支持三元组索引加速) |
-| pgcrypto | 内置 | 加密函数 (SHA/AES/RSA 等) |
-| hstore | 内置 | 键值对存储 |
+| pgvector | 0.8.2 | 向量存储与相似度搜索 |
+| pg_repack | latest | 在线表膨胀清理，无锁重建表/索引 |
+| pg_hint_plan | latest | 执行计划干预，强制指定索引/连接顺序 |
+
+### 内核 contrib 扩展 (零编译，自动启用)
+
+| 扩展 | 用途 |
+|------|------|
+| pg_stat_statements | SQL 执行统计，性能调优必备 |
+| pg_trgm | 模糊文本搜索，三元组索引加速 `LIKE '%keyword%'` |
+| pgcrypto | 加密函数 (SHA/AES/UUID) |
+| hstore | 键值对存储类型 |
+| pg_prewarm | 缓冲池预热，重启后快速恢复热数据 |
+| auto_explain | 自动记录慢查询执行计划 |
+| pg_visibility | 页面可见性检查，数据完整性诊断 |
+| pg_freespacemap | 空闲空间地图，碎片分析 |
+| pageinspect | 底层页面检查，深度调试 |
+
+
 
 ## 快速开始
 
@@ -35,7 +50,12 @@ docker run -d \
 docker build -t postgresql-patch ./build
 ```
 
-构建参数可通过 `--build-arg` 覆盖，参见 [Dockerfile](build/Dockerfile) 中的 `ARG` 声明。
+### 构建参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `PG_VERSION` | `18.4` | PostgreSQL 版本 |
+| `PGVECTOR_VERSION` | `0.8.2` | pgvector 版本 |
 
 ## 验证
 
@@ -44,29 +64,30 @@ docker exec -it postgresql-patch psql -U user -d mydb
 ```
 
 ```sql
--- 查看所有已启用的扩展
+-- 扩展列表
 SELECT extname, extversion FROM pg_extension ORDER BY extname;
 
--- pgvector: 向量操作
+-- 向量操作
 CREATE TABLE items (id bigserial PRIMARY KEY, embedding vector(3));
 INSERT INTO items (embedding) VALUES ('[1,2,3]'), ('[4,5,6]');
 SELECT * FROM items ORDER BY embedding <-> '[3,1,2]' LIMIT 5;
+
+-- HNSW 索引
 CREATE INDEX ON items USING hnsw (embedding vector_l2_ops);
 
--- pg_stat_statements: 查看最慢的 SQL
-SELECT query, calls, mean_exec_time, total_exec_time
-FROM pg_stat_statements ORDER BY mean_exec_time DESC LIMIT 10;
+-- pg_stat_statements (SQL 统计)
+SELECT query, calls, total_exec_time FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 5;
 
--- pg_trgm: 模糊搜索
-SELECT similarity('hello world', 'hello word');  -- 相似度计算
-CREATE INDEX ON items USING gin (name gin_trgm_ops);  -- 加速 LIKE 查询
+-- pg_trgm (模糊搜索)
+CREATE INDEX ON items USING gin (embedding::text gin_trgm_ops);
+SELECT * FROM items WHERE embedding::text LIKE '%1,2%';
 
--- pgcrypto: 加密
-SELECT encode(digest('hello', 'sha256'), 'hex');
-SELECT gen_random_uuid();
+-- pg_repack (表膨胀清理, 需安装 pg_repack 命令行工具)
+-- pg_repack -d mydb -t items
 
--- hstore: 键值对
-SELECT 'a=>1, b=>2'::hstore -> 'a';  -- 取值
+-- pg_hint_plan (执行计划干预)
+SET pg_hint_plan.enable_hint = on;
+/*+ IndexScan(items) */ SELECT * FROM items WHERE id = 1;
 ```
 
 ## 向量搜索示例
@@ -117,21 +138,21 @@ ORDER BY embedding <=> '[0.1,0.2,...]' LIMIT 5;
 # 原版 (1Panel 默认)
 image: postgres:17.10-alpine
 
-# pgvector 版
-image: ghcr.io/preca-hoshino/postgresql-patch:17.10-alpine-pgvector-0.8.2
+# 扩展版 (含全部扩展)
+image: ghcr.io/preca-hoshino/postgresql-patch:17.10-alpine-patch
 ```
 
-迁移细节见 [pgvector-migration-guide.md](pgvector-migration-guide.md)。
+迁移细节见 [migration-guide.md](pgvector-migration-guide.md)。
 
 ## 支持的版本
 
 | PG 版本 | 基础镜像 | 标签 |
 |---------|----------|------|
-| 18.4 | `postgres:18.4-alpine` | `18.4-alpine-pgvector-0.8.2` |
-| 17.10 | `postgres:17.10-alpine` | `17.10-alpine-pgvector-0.8.2` |
-| 16.14 | `postgres:16.14-alpine` | `16.14-alpine-pgvector-0.8.2` |
-| 15.18 | `postgres:15.18-alpine` | `15.18-alpine-pgvector-0.8.2` |
-| 14.23 | `postgres:14.23-alpine` | `14.23-alpine-pgvector-0.8.2` |
+| 18.4 | `postgres:18.4-alpine` | `18.4-alpine-patch` |
+| 17.10 | `postgres:17.10-alpine` | `17.10-alpine-patch` |
+| 16.14 | `postgres:16.14-alpine` | `16.14-alpine-patch` |
+| 15.18 | `postgres:15.18-alpine` | `15.18-alpine-patch` |
+| 14.23 | `postgres:14.23-alpine` | `14.23-alpine-patch` |
 
 ## CI/CD
 
@@ -148,8 +169,8 @@ GitHub Actions 四阶段流水线: 元数据 -> 构建(缓存) -> 推送 ghcr.io
 
 ```
 build/
-  Dockerfile
-  init-pgvector.sh
+  Dockerfile          # 多阶段构建，全部扩展预编译
+  init-extensions.sh  # 自动初始化所有扩展 (contrib + 编译扩展)
 .github/workflows/docker-build.yml
 pgvector-migration-guide.md
 ```
@@ -164,10 +185,18 @@ pgvector-migration-guide.md
 |------|--------|
 | PostgreSQL | PostgreSQL License |
 | pgvector | PostgreSQL License |
+| pg_repack | PostgreSQL License (BSD-3-Clause) |
+| pg_cron | PostgreSQL License |
+| pg_hint_plan | PostgreSQL License |
+| PostGIS | GPL-2.0 |
 | 1Panel Dockerfile | GPL-3.0 |
 
 ## 参考
 
 - [pgvector](https://github.com/pgvector/pgvector) | [文档](https://github.com/pgvector/pgvector/blob/master/README.md)
+- [pg_repack](https://github.com/reorg/pg_repack) | 在线表膨胀清理
+- [pg_cron](https://github.com/citusdata/pg_cron) | 定时任务调度
+- [pg_hint_plan](https://github.com/ossc-db/pg_hint_plan) | 执行计划干预
+- [PostGIS](https://postgis.net/) | 地理空间数据
 - [PostgreSQL Docker 镜像](https://hub.docker.com/_/postgres)
 - [1Panel appstore](https://github.com/1Panel-dev/appstore)

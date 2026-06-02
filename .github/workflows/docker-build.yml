@@ -1,4 +1,4 @@
-name: "\U0001F433 Build & Push PostgreSQL pgvector"
+name: "\U0001F433 Build & Push PostgreSQL Patch"
 
 on:
   push:
@@ -99,14 +99,14 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
-            type=raw,value=${{ matrix.pg_image_tag }}-alpine-pgvector-${{ env.PGVECTOR_VERSION }}
+            type=raw,value=${{ matrix.pg_image_tag }}-alpine-patch
           labels: |
-            org.opencontainers.image.title=PostgreSQL + pgvector
-            org.opencontainers.image.description=PostgreSQL ${{ matrix.pg_image_tag }} + pgvector ${{ env.PGVECTOR_VERSION }}
-            org.opencontainers.image.vendor=PgVector Patch Community
-            org.opencontainers.image.version=${{ matrix.pg_image_tag }}-alpine-pgvector-${{ env.PGVECTOR_VERSION }}
+            org.opencontainers.image.title=PostgreSQL Patch
+            org.opencontainers.image.description=PostgreSQL ${{ matrix.pg_image_tag }} + pre-compiled extensions
+            org.opencontainers.image.vendor=PostgreSQL Patch Community
+            org.opencontainers.image.version=${{ matrix.pg_image_tag }}-alpine-patch
             pg.version=${{ matrix.pg_image_tag }}
-            pgvector.version=${{ env.PGVECTOR_VERSION }}
+            extensions.included=pgvector,pg_repack,pg_hint_plan,pg_cron,postgis
 
       - uses: docker/build-push-action@v7
         with:
@@ -147,15 +147,15 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
-            type=raw,value=${{ matrix.pg_image_tag }}-alpine-pgvector-${{ env.PGVECTOR_VERSION }}
+            type=raw,value=${{ matrix.pg_image_tag }}-alpine-patch
             type=raw,value=latest,enable=${{ matrix.pg_image_tag == '18.4' }}
           labels: |
-            org.opencontainers.image.title=PostgreSQL + pgvector
-            org.opencontainers.image.description=PostgreSQL ${{ matrix.pg_image_tag }} + pgvector ${{ env.PGVECTOR_VERSION }}
-            org.opencontainers.image.vendor=PgVector Patch Community
-            org.opencontainers.image.version=${{ matrix.pg_image_tag }}-alpine-pgvector-${{ env.PGVECTOR_VERSION }}
+            org.opencontainers.image.title=PostgreSQL Patch
+            org.opencontainers.image.description=PostgreSQL ${{ matrix.pg_image_tag }} + pre-compiled extensions
+            org.opencontainers.image.vendor=PostgreSQL Patch Community
+            org.opencontainers.image.version=${{ matrix.pg_image_tag }}-alpine-patch
             pg.version=${{ matrix.pg_image_tag }}
-            pgvector.version=${{ env.PGVECTOR_VERSION }}
+            extensions.included=pgvector,pg_repack,pg_hint_plan,pg_cron,postgis
 
       - id: login
         run: |
@@ -212,12 +212,12 @@ jobs:
 
       - name: "pull image"
         run: |
-          docker pull "${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-alpine-pgvector-${{ env.PGVECTOR_VERSION }}"
+          docker pull "${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-alpine-patch"
 
       - name: "verify / pgvector extension"
         run: |
           CONTAINER="pgvec-test-pg${{ matrix.pg_image_tag }}"
-          IMAGE="${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-alpine-pgvector-${{ env.PGVECTOR_VERSION }}"
+          IMAGE="${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-alpine-patch"
           # 不用 --rm，方便失败时检查日志
           docker run -e POSTGRES_PASSWORD=test \
             -d --name "$CONTAINER" "$IMAGE"
@@ -255,13 +255,13 @@ jobs:
 
       - name: "verify / postgresql"
         run: |
-          docker run --rm "${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-alpine-pgvector-${{ env.PGVECTOR_VERSION }}" \
+          docker run --rm "${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-alpine-patch" \
             postgres --version
 
       - name: "summary"
         run: |
           echo "========================================="
           echo "  PG ${{ matrix.pg_image_tag }} + pgvector ${{ env.PGVECTOR_VERSION }}"
-          echo "  Image: ${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-alpine-pgvector-${{ env.PGVECTOR_VERSION }}"
+          echo "  Image: ${{ needs.prepare.outputs.image_base }}:${{ matrix.pg_image_tag }}-alpine-patch"
           echo "  Verified OK"
           echo "========================================="

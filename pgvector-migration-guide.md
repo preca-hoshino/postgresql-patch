@@ -1,22 +1,47 @@
-# PostgreSQL + pgvector 迁移方案
+# PostgreSQL Patch 迁移方案
 
-> **目标**：将 1Panel PostgreSQL Docker 镜像（官方 `postgres:alpine`）替换为预装 pgvector 扩展的版本，
-> 实现向量相似度搜索能力，同时保持原 PostgreSQL 功能 100% 兼容。
+> **目标**：将 1Panel PostgreSQL Docker 镜像（官方 `postgres:alpine`）替换为预装常用扩展的版本，
+> 涵盖向量搜索、表膨胀清理、执行计划干预、定时任务、地理空间等能力，同时保持原 PostgreSQL 功能 100% 兼容。
 
 ---
 
 ## 一、核心变化
 
-| 组件 | 原版 | 替换后 |
+### 1.1 新增扩展一览
+
+| 组件 | 原版 | 替换后 | 镜像增量 |
+|------|------|--------|---------|
+| pgvector | ❌ | ✅ v0.8.2 预装 | ~10 MB |
+| pg_repack | ❌ | ✅ 预装 | ~300 KB |
+| pg_hint_plan | ❌ | ✅ 预装 | ~500 KB |
+| pg_cron | ❌ | ✅ 预装 | ~200 KB |
+| PostGIS | ❌ | ✅ 预装 | ~30-50 MB |
+| pg_stat_statements | ❌ 未启用 | ✅ 自动启用 | 0 MB |
+| pg_trgm | ❌ 未启用 | ✅ 自动启用 | 0 MB |
+| pgcrypto | ❌ 未启用 | ✅ 自动启用 | 0 MB |
+| hstore | ❌ 未启用 | ✅ 自动启用 | 0 MB |
+| pg_prewarm | ❌ 未启用 | ✅ 自动启用 | 0 MB |
+| auto_explain | ❌ 未启用 | ✅ 自动启用 | 0 MB |
+| pg_visibility | ❌ 未启用 | ✅ 自动启用 | 0 MB |
+| pg_freespacemap | ❌ 未启用 | ✅ 自动启用 | 0 MB |
+| pageinspect | ❌ 未启用 | ✅ 自动启用 | 0 MB |
+
+### 1.2 能力对比
+
+| 能力 | 原版 | 替换后 |
 |------|------|--------|
-| 基础镜像 | `postgres:17-alpine` | `postgres:17-alpine` (相同) |
-| pgvector 扩展 | ❌ 不包含 | ✅ v0.8.2 预装 |
 | 向量数据类型 | ❌ | ✅ vector, halfvec, bit, sparsevec |
 | 向量索引 | ❌ | ✅ HNSW, IVFFlat |
 | 向量距离函数 | ❌ | ✅ L2, 内积, 余弦, L1, Hamming, Jaccard |
-| 自动初始化 | 创建默认数据库 | 创建默认数据库 + 自动启用 pgvector |
+| SQL 执行统计 | ❌ | ✅ pg_stat_statements |
+| 模糊文本搜索 | ❌ | ✅ pg_trgm (三元组索引) |
+| 在线表膨胀清理 | ❌ | ✅ pg_repack (无锁) |
+| 执行计划干预 | ❌ | ✅ pg_hint_plan |
+| 定时任务调度 | ❌ | ✅ pg_cron |
+| 地理空间数据 | ❌ | ✅ PostGIS |
+| 自动初始化 | 创建默认数据库 | 创建默认数据库 + 自动启用所有扩展 |
 | 原有功能 | ✅ | ✅ 完全保留 |
-| 镜像体积 | ~260 MB | ~270 MB (+10 MB) |
+| 默认镜像体积 | ~260 MB | ~275 MB (+15 MB) |
 
 ---
 
@@ -25,33 +50,79 @@
 ### 2.1 多阶段构建
 
 ```dockerfile
-# Stage 1: 编译 pgvector (在 builder 阶段完成)
+# Stage 1: 编译扩展 (在 builder 阶段完成)
 FROM postgres:${PG_VERSION}-alpine AS builder
-RUN apk add --no-cache build-base postgresql-dev git \
-    && git clone --branch v${PGVECTOR_VERSION} --depth 1 https://github.com/pgvector/pgvector.git \
+RUN apk add --no-cache build-base postgresql-dev git
+
+# pgvector
+RUN git clone --branch v${PGVECTOR_VERSION} --depth 1 https://github.com/pgvector/pgvector.git \
     && cd pgvector && make OPTFLAGS="" && make OPTFLAGS="" install
+
+# pg_repack
+RUN git clone --depth 1 https://github.com/reorg/pg_repack.git \
+    && cd pg_repack && make && make install
+
+# pg_hint_plan
+RUN git clone --depth 1 https://github.com/ossc-db/pg_hint_plan.git \
+    && cd pg_hint_plan && make && make install
+
+# pg_cron
+RUN git clone --depth 1 https://github.com/citusdata/pg_cron.git \
+    && cd pg_cron && make && make install
+
+# PostGIS
+RUN apk add --no-cache geos-dev proj-dev gdal-dev \
+    && wget -q https://download.osgeo.org/postgis/source/postgis-3.4.2.tar.gz \
+    && tar xzf postgis-3.4.2.tar.gz && cd postgis-3.4.2 \
+    && ./configure && make && make install
 
 # Stage 2: 最终镜像 (只复制编译产物，不留编译工具)
 FROM postgres:${PG_VERSION}-alpine
-COPY --from=builder /tmp/pgvector-build/*.so /usr/local/lib/postgresql/
-COPY --from=builder /tmp/pgvector-build/*.control /usr/local/share/postgresql/extension/
-COPY --from=builder /tmp/pgvector-build/*.sql /usr/local/share/postgresql/extension/
+COPY --from=builder /tmp/extensions-build/*.so /usr/local/lib/postgresql/
+COPY --from=builder /tmp/extensions-build/*.control /usr/local/share/postgresql/extension/
+COPY --from=builder /tmp/extensions-build/*.sql /usr/local/share/postgresql/extension/
 ```
 
 > 多阶段构建确保最终镜像不包含 `build-base`、`postgresql-dev` 等编译依赖，保持镜像精简。
 
-### 2.2 自动初始化脚本
+### 2.2 构建参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `PG_VERSION` | `18.4` | PostgreSQL 版本 |
+| `PGVECTOR_VERSION` | `0.8.2` | pgvector 版本 |
+
+### 2.3 自动初始化脚本
 
 ```dockerfile
-COPY init-pgvector.sh /docker-entrypoint-initdb.d/01-pgvector.sh
+COPY init-extensions.sh /docker-entrypoint-initdb.d/01-extensions.sh
 ```
 
 `init-pgvector.sh` 会在数据库首次初始化时自动执行：
 
 ```bash
 #!/bin/bash
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+set -e
+DB_NAME="${POSTGRES_DB:-postgres}"
+
+# 配置 shared_preload_libraries
+PRELOAD="pg_stat_statements, auto_explain"
+if [ -f /usr/local/lib/postgresql/cron.so ]; then
+    PRELOAD="${PRELOAD}, pg_cron"
+fi
+echo "shared_preload_libraries = '${PRELOAD}'" >> "$PGDATA/postgresql.conf"
+
+# 启用所有扩展
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
     CREATE EXTENSION IF NOT EXISTS vector;
+    CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    CREATE EXTENSION IF NOT EXISTS hstore;
+    CREATE EXTENSION IF NOT EXISTS pg_repack;
+    CREATE EXTENSION IF NOT EXISTS pg_hint_plan;
+    CREATE EXTENSION IF NOT EXISTS pg_cron;
+    CREATE EXTENSION IF NOT EXISTS postgis;
 EOSQL
 ```
 
@@ -79,10 +150,10 @@ services:
   postgres:
     # 原版
     # image: postgres:17.10-alpine
-    # pgvector 版 (PG 17)
-    image: ghcr.io/preca-hoshino/postgresql-patch:17.10-alpine-pgvector-0.8.2
-    # pgvector 版 (PG 18)
-    # image: ghcr.io/preca-hoshino/postgresql-patch:18.4-alpine-pgvector-0.8.2
+    # 扩展版 (PG 17)
+    image: ghcr.io/preca-hoshino/postgresql-patch:17.10-alpine-patch
+    # 扩展版 (PG 18)
+    # image: ghcr.io/preca-hoshino/postgresql-patch:18.4-alpine-patch
     # 其余配置完全不变
 ```
 
@@ -101,18 +172,29 @@ docker exec -t postgres pg_dumpall -U user > backup.sql
 # 2. 停止旧容器
 docker stop postgres
 
-# 3. 启动新容器 (使用 pgvector 镜像，挂载相同的 data volume)
+# 3. 启动新容器 (使用新镜像，挂载相同的 data volume)
 docker run -d \
   -v pgdata:/var/lib/postgresql/data \
-  ghcr.io/preca-hoshino/postgresql-patch:17.10-alpine-pgvector-0.8.2
+  ghcr.io/preca-hoshino/postgresql-patch:17.10-alpine-patch
 
 # 4. 进入容器启用扩展
 docker exec -it postgres psql -U user -d mydb
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS hstore;
+CREATE EXTENSION IF NOT EXISTS pg_repack;
+CREATE EXTENSION IF NOT EXISTS pg_hint_plan;
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS postgis_topology;
+-- pg_cron 需要先配置 shared_preload_libraries 并重启 PostgreSQL
 ```
 
 > 注意：新镜像的 `/docker-entrypoint-initdb.d/` 脚本只在数据库首次初始化时运行。
-> 已有数据卷需要手动 `CREATE EXTENSION vector;`。
+> 已有数据卷需要手动 `CREATE EXTENSION`。
+> `pg_stat_statements` 和 `auto_explain` 需要加入 `shared_preload_libraries` 并重启 PostgreSQL 才能生效。
 
 ---
 
@@ -193,11 +275,17 @@ LIMIT 5;
 
 | 检查项 | 状态 |
 |--------|------|
-| 原有 PostgreSQL 功能 | ✅ 100% 兼容，pgvector 是纯扩展 |
+| 原有 PostgreSQL 功能 | ✅ 100% 兼容，所有扩展都是纯扩展，不修改内核 |
 | 1Panel 数据卷 | ✅ 数据目录结构不变 |
 | 1Panel 环境变量 | ✅ POSTGRES_USER/PASSWORD/DB 不变 |
 | PostgreSQL 复制 | ✅ pgvector 使用 WAL，支持流复制 |
-| 已有数据安全性 | ✅ 扩展只添加新类型，不修改现有表 |
+| 已有数据安全性 | ✅ 扩展只添加新类型/函数，不修改现有表 |
+| contrib 扩展 | ✅ 内核自带，零风险，仅启用未使用的功能 |
+| pg_repack | ✅ 工具级扩展，不常驻，不影响其他操作 |
+| pg_hint_plan | ✅ 仅在 SQL 中显式使用 hint 语法时生效 |
+| pg_cron | ⚠️ 需加入 shared_preload_libraries 并重启，常驻一个后台进程 |
+| PostGIS | ⚠️ 镜像增量 ~30-50 MB |
+| pg_stat_statements | ⚠️ 需加入 shared_preload_libraries 并重启，内存占用 ~1-10 MB |
 | 镜像体积 | ✅ 仅增加 ~10MB |
 | 升级路径 | ✅ 可随时切换回原版镜像 |
 
@@ -265,11 +353,11 @@ git push -u origin main
 
 ```
 ghcr.io/preca-hoshino/postgresql-patch:latest
-ghcr.io/preca-hoshino/postgresql-patch:18.4-alpine-pgvector-0.8.2
-ghcr.io/preca-hoshino/postgresql-patch:17.10-alpine-pgvector-0.8.2
-ghcr.io/preca-hoshino/postgresql-patch:16.14-alpine-pgvector-0.8.2
-ghcr.io/preca-hoshino/postgresql-patch:15.18-alpine-pgvector-0.8.2
-ghcr.io/preca-hoshino/postgresql-patch:14.23-alpine-pgvector-0.8.2
+ghcr.io/preca-hoshino/postgresql-patch:18.4-alpine-patch
+ghcr.io/preca-hoshino/postgresql-patch:17.10-alpine-patch
+ghcr.io/preca-hoshino/postgresql-patch:16.14-alpine-patch
+ghcr.io/preca-hoshino/postgresql-patch:15.18-alpine-patch
+ghcr.io/preca-hoshino/postgresql-patch:14.23-alpine-patch
 ```
 
 ### 7.4 手动触发构建
