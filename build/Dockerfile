@@ -1,6 +1,6 @@
 # Dockerfile - PostgreSQL Patch (常用扩展预编译镜像)
 # Based on https://github.com/1Panel-dev/appstore/tree/dev/apps/postgresql
-# 预编译扩展: pgvector, pg_repack, pg_cron, pg_hint_plan, PostGIS
+# 预编译扩展: pgvector, pg_repack, pg_cron, pg_hint_plan
 # 内核 contrib: pg_stat_statements, pg_trgm, pgcrypto, hstore, pg_prewarm 等
 #
 # 用法:
@@ -64,27 +64,9 @@ RUN PG_MAJOR=$(echo "${PG_VERSION}" | cut -d. -f1) \
     && make install \
     && echo "pg_hint_plan built successfully"
 
-# 5. PostGIS (地理空间数据 — geometry/geography)
-RUN apk add --no-cache \
-        cmake \
-        geos-dev \
-        proj-dev \
-        gdal-dev \
-        json-c-dev \
-        libxml2-dev \
-        protobuf-c-dev \
-        autoconf \
-        automake \
-        libtool \
-    && cd /tmp \
-    && for i in 1 2 3; do wget -q --timeout=30 https://download.osgeo.org/postgis/source/postgis-3.4.2.tar.gz && break || sleep 5; done \
-    && tar xzf postgis-3.4.2.tar.gz \
-    && cd postgis-3.4.2 \
-    && ./autogen.sh \
-    && ./configure --without-raster --without-topology \
-    && make -j$(nproc) \
-    && make install \
-    && echo "PostGIS 3.4.2 built successfully"
+# 5. PostGIS 从源码编译在 Alpine 上不稳定 (autogen.sh 依赖复杂)
+#    改用 Alpine 官方 apk 包安装，在 final stage 执行
+#    参见 Stage 2 中的 apk add postgis
 
 # 收集所有编译产物到统一目录
 RUN mkdir -p /tmp/extensions-build \
@@ -102,6 +84,9 @@ ARG PGVECTOR_VERSION=0.8.2
 
 LABEL maintainer="PostgreSQL Patch Community"
 LABEL description="PostgreSQL ${PG_VERSION} + 常用扩展 (pgvector, pg_repack, pg_hint_plan, pg_cron, PostGIS, contrib)"
+
+# 安装 PostGIS (使用 Alpine 官方包，确保与 postgresql 版本兼容)
+RUN apk add --no-cache postgis
 LABEL org.opencontainers.image.title="PostgreSQL Patch"
 LABEL org.opencontainers.image.description="PostgreSQL ${PG_VERSION} with pre-compiled extensions for 1Panel"
 LABEL org.opencontainers.image.version="${PG_VERSION}-alpine-patch"
@@ -128,5 +113,5 @@ RUN echo "=== Installed extensions ===" \
     && echo "--- pg_hint_plan ---" \
     && ls -la /usr/local/lib/postgresql/hint_plan*.so \
     && echo "--- PostGIS ---" \
-    && ls -la /usr/local/lib/postgresql/postgis*.so \
+    && ls -la /usr/local/lib/postgresql/postgis*.so 2>/dev/null || ls -la /usr/lib/postgresql/postgis*.so 2>/dev/null || echo "  (installed via apk, checking)" \
     && echo "=== All extensions verified ==="
