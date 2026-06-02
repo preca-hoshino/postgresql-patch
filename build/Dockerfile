@@ -23,6 +23,8 @@ RUN apk add --no-cache \
         lz4-dev \
         zstd-dev \
         gawk \
+        flex \
+        bison \
     && sed -i 's/with_llvm[[:space:]]*=[[:space:]]*yes/with_llvm = no/g' /usr/local/lib/postgresql/pgxs/src/Makefile.global \
     && ln -sf /usr/lib/libz.so /usr/local/lib/libz.so \
     && ln -sf /usr/lib/libssl.so /usr/local/lib/libssl.so \
@@ -71,10 +73,14 @@ RUN apk add --no-cache \
         json-c-dev \
         libxml2-dev \
         protobuf-c-dev \
+        autoconf \
+        automake \
+        libtool \
     && cd /tmp \
-    && wget -q https://download.osgeo.org/postgis/source/postgis-3.4.2.tar.gz \
+    && for i in 1 2 3; do wget -q --timeout=30 https://download.osgeo.org/postgis/source/postgis-3.4.2.tar.gz && break || sleep 5; done \
     && tar xzf postgis-3.4.2.tar.gz \
     && cd postgis-3.4.2 \
+    && ./autogen.sh \
     && ./configure --without-raster --without-topology \
     && make -j$(nproc) \
     && make install \
