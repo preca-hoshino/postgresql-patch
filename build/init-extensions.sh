@@ -27,9 +27,6 @@ pg_stat_statements.max = 10000
 # auto_explain: 自动记录慢查询执行计划
 auto_explain.log_min_duration = '1s'
 auto_explain.log_analyze = true
-
-# pg_cron: 定时任务调度 (参数在 pg_cron.so 加载后生效)
-cron.database_name = '${DB_NAME}'
 EOF
 
 echo "[extensions] shared_preload_libraries = pg_stat_statements, auto_explain, pg_cron"
@@ -74,10 +71,19 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
 
     -- 执行计划干预 (强制索引/连接顺序)
     CREATE EXTENSION IF NOT EXISTS pg_hint_plan;
+EOSQL
 
-    -- 定时任务调度
+# pg_cron 需要在 shared_preload_libraries 中声明
+# pg_cron.so 加载后会注册 cron.* 参数，此时 cron.database_name 生效
+# CREATE EXTENSION 会导致 GUC 参数检查失败（因为 .so 尚未通过 preload 加载）
+# 所以 pg_cron 必须通过 postgresql.conf 中的 shared_preload_libraries 预加载
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
+    -- 定时任务调度 (已在 shared_preload_libraries 中加载)
     CREATE EXTENSION IF NOT EXISTS pg_cron;
+EOSQL
 
+# pg_cron 配置 (在 extension 已通过 shared_preload 加载后设置)
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
     -- 地理空间数据
     CREATE EXTENSION IF NOT EXISTS postgis;
     CREATE EXTENSION IF NOT EXISTS postgis_topology;
