@@ -18,7 +18,7 @@ echo "[extensions] Initializing extensions in database: $DB_NAME"
 cat >> "$PGDATA/postgresql.conf" <<EOF
 
 # === Extensions (auto-configured by init script) ===
-shared_preload_libraries = 'pg_stat_statements, auto_explain, pg_cron'
+shared_preload_libraries = 'pg_stat_statements, auto_explain'
 
 # pg_stat_statements: SQL 执行统计
 pg_stat_statements.track = all
@@ -27,10 +27,10 @@ pg_stat_statements.max = 10000
 # auto_explain: 自动记录慢查询执行计划
 auto_explain.log_min_duration = '1s'
 auto_explain.log_analyze = true
-
-# pg_cron: 定时任务调度
-cron.database_name = '${DB_NAME}'
 EOF
+
+# pg_cron 需要在 extension 加载后才能识别 cron.* 参数
+# 通过 CREATE EXTENSION 自动加载，然后 ALTER SYSTEM 设置
 
 echo "[extensions] shared_preload_libraries = '${PRELOAD}'"
 
@@ -81,6 +81,12 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
     -- 地理空间数据
     CREATE EXTENSION IF NOT EXISTS postgis;
     CREATE EXTENSION IF NOT EXISTS postgis_topology;
+EOSQL
+
+# pg_cron 需要在 extension 加载后配置
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
+    ALTER SYSTEM SET cron.database_name = '${DB_NAME}';
+    SELECT pg_reload_conf();
 EOSQL
 
 echo "[extensions] Compiled extensions enabled"
