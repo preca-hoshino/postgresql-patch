@@ -22,7 +22,10 @@ RUN apk add --no-cache \
         openssl-dev \
         lz4-dev \
         zstd-dev \
-    && sed -i 's/with_llvm[[:space:]]*=[[:space:]]*yes/with_llvm = no/g' /usr/local/lib/postgresql/pgxs/src/Makefile.global
+    && sed -i 's/with_llvm[[:space:]]*=[[:space:]]*yes/with_llvm = no/g' /usr/local/lib/postgresql/pgxs/src/Makefile.global \
+    && ln -sf /usr/lib/libz.so /usr/local/lib/libz.so \
+    && ln -sf /usr/lib/libssl.so /usr/local/lib/libssl.so \
+    && ln -sf /usr/lib/libcrypto.so /usr/local/lib/libcrypto.so
 
 # 1. pgvector (向量相似度搜索)
 RUN cd /tmp \
