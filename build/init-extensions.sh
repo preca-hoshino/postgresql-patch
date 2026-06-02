@@ -65,20 +65,16 @@ echo "[extensions] Contrib extensions enabled"
 
 # ===== 3. 编译扩展 =====
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
-    -- 在线表膨胀清理 (无锁)
-    CREATE EXTENSION IF NOT EXISTS pg_repack;
+# pg_cron 必须通过 shared_preload_libraries 预加载
+# init 脚本执行时 PG 已经启动（不含 pg_cron），需要重启才能加载
+pg_ctl -D "$PGDATA" restart -w -t 60
 
-    -- 执行计划干预 (强制索引/连接顺序)
-    CREATE EXTENSION IF NOT EXISTS pg_hint_plan;
-EOSQL
-
-# pg_cron: 需要先设置 cron.database_name，再 CREATE EXTENSION
-# pg_cron.so 通过 shared_preload_libraries 已加载，GUC 参数已注册
+# pg_cron: 重启后 shared_preload_libraries 已包含 pg_cron.so
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
-    SET cron.database_name = '${DB_NAME}';
     CREATE EXTENSION IF NOT EXISTS pg_cron;
 EOSQL
+
+echo "[extensions] pg_cron enabled"
 
 # 地理空间数据
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
