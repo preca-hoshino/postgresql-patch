@@ -13,6 +13,8 @@
 | pgvector | 0.8.2 | 向量存储与相似度搜索 |
 | pg_repack | latest | 在线表膨胀清理，无锁重建表/索引 |
 | pg_hint_plan | latest | 执行计划干预，强制指定索引/连接顺序 |
+| pg_cron | latest | 定时任务调度，自动 VACUUM/维护/归档 |
+| PostGIS | 3.6.3 | 空间数据处理 (地理信息/距离计算/区域查询) |
 
 ### 内核 contrib 扩展 (零编译，自动启用)
 
@@ -56,6 +58,7 @@ docker build -t postgresql-patch ./build
 |------|--------|------|
 | `PG_VERSION` | `18.4` | PostgreSQL 版本 |
 | `PGVECTOR_VERSION` | `0.8.2` | pgvector 版本 |
+| `POSTGIS_VERSION` | `3.6.3` | PostGIS 版本 |
 
 ## 验证
 
@@ -88,6 +91,23 @@ SELECT * FROM items WHERE embedding::text LIKE '%1,2%';
 -- pg_hint_plan (执行计划干预)
 SET pg_hint_plan.enable_hint = on;
 /*+ IndexScan(items) */ SELECT * FROM items WHERE id = 1;
+
+-- PostGIS (空间数据查询)
+SELECT ST_Distance(
+    ST_GeomFromText('POINT(116.4 39.9)', 4326),
+    ST_GeomFromText('POINT(121.5 31.2)', 4326)
+);
+
+-- 创建带几何列的表
+CREATE TABLE locations (
+    id bigserial PRIMARY KEY,
+    name text,
+    geom geometry(Point, 4326)
+);
+INSERT INTO locations (name, geom) VALUES
+    ('北京', ST_GeomFromText('POINT(116.4 39.9)', 4326)),
+    ('上海', ST_GeomFromText('POINT(121.5 31.2)', 4326));
+SELECT name, ST_AsText(geom) FROM locations;
 ```
 
 ## 向量搜索示例

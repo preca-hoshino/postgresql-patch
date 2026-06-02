@@ -13,6 +13,7 @@ FROM postgres:${PG_VERSION}-alpine AS builder
 
 ARG PG_VERSION=18.4
 ARG PGVECTOR_VERSION=0.8.2
+ARG POSTGIS_VERSION=3.6.3
 
 RUN apk add --no-cache \
         build-base \
@@ -25,6 +26,15 @@ RUN apk add --no-cache \
         gawk \
         flex \
         bison \
+        geos-dev \
+        proj-dev \
+        gdal-dev \
+        protobuf-c-dev \
+        json-c-dev \
+        libxml2-dev \
+        sqlite-dev \
+        curl-dev \
+        tiff-dev \
     && sed -i 's/with_llvm[[:space:]]*=[[:space:]]*yes/with_llvm = no/g' /usr/local/lib/postgresql/pgxs/src/Makefile.global \
     && ln -sf /usr/lib/libz.so /usr/local/lib/libz.so \
     && ln -sf /usr/lib/libssl.so /usr/local/lib/libssl.so \
@@ -64,9 +74,19 @@ RUN PG_MAJOR=$(echo "${PG_VERSION}" | cut -d. -f1) \
     && make install \
     && echo "pg_hint_plan built successfully"
 
-# 5. PostGIS 从源码编译在 Alpine 上不稳定 (autogen.sh 依赖复杂)
-#    改用 Alpine 官方 apk 包安装，在 final stage 执行
-#    参见 Stage 2 中的 apk add postgis
+# 5. PostGIS (空间数据处理 — ST_Distance/ST_Within/ST_Intersects 等)
+#    使用 release tarball (自带 configure 脚本, 跳过 autogen.sh)
+#    PostGIS 3.6 支持 PostgreSQL 12-18, 一个版本覆盖所有 PG
+RUN cd /tmp \
+    && curl -fsSL "https://download.osgeo.org/postgis/source/postgis-${POSTGIS_VERSION}.tar.gz" -o postgis.tar.gz \
+    && tar xzf postgis.tar.gz \
+    && cd postgis-${POSTGIS_VERSION} \
+    && ./configure --with-pgconfig=$(which pg_config) --without-raster --without-sfcgal --without-topology \
+    && make -j$(nproc) \
+    && make install \
+    && echo "PostGIS ${POSTGIS_VERSION} built successfully" \
+    && ls -la $(pg_config --pkglibdir)/postgis*.so \
+    && ls -la $(pg_config --sharedir)/extension/postgis*.control
 
 # 收集所有编译产物到统一目录
 RUN mkdir -p /tmp/extensions-build \
@@ -81,14 +101,27 @@ FROM postgres:${PG_VERSION}-alpine
 
 ARG PG_VERSION=18.4
 ARG PGVECTOR_VERSION=0.8.2
+ARG POSTGIS_VERSION=3.6.3
+
+# 安装 PostGIS 运行时依赖 (GEOS/PROJ/GDAL 等共享库)
+RUN apk add --no-cache \
+        geos \
+        proj \
+        gdal \
+        protobuf-c \
+        json-c \
+        libxml2 \
+        sqlite-libs \
+    && echo "PostGIS runtime dependencies installed"
 
 LABEL maintainer="PostgreSQL Patch Community"
-LABEL description="PostgreSQL ${PG_VERSION} + 常用扩展 (pgvector, pg_repack, pg_hint_plan, pg_cron, contrib)"
+LABEL description="PostgreSQL ${PG_VERSION} + 常用扩展 (pgvector, pg_repack, pg_hint_plan, pg_cron, PostGIS, contrib)"
 LABEL org.opencontainers.image.title="PostgreSQL Patch"
 LABEL org.opencontainers.image.description="PostgreSQL ${PG_VERSION} with pre-compiled extensions for 1Panel"
 LABEL org.opencontainers.image.version="${PG_VERSION}-alpine-patch"
 LABEL pg.version="${PG_VERSION}"
 LABEL extensions.pgvector.version="${PGVECTOR_VERSION}"
+LABEL extensions.postgis.version="${POSTGIS_VERSION}"
 
 # Copy all extensions from builder
 COPY --from=builder /tmp/extensions-build/*.so /usr/local/lib/postgresql/

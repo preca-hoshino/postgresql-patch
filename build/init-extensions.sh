@@ -5,8 +5,7 @@
 # 扩展清单:
 #   内核 contrib (零编译): pg_stat_statements, pg_trgm, pgcrypto, hstore,
 #                          pg_prewarm, auto_explain, pg_visibility, pg_freespacemap, pageinspect
-#   编译扩展: pgvector, pg_repack, pg_hint_plan, [pg_cron], [PostGIS]
-#   方括号表示需要 build-arg 启用
+#   编译扩展: pgvector, pg_repack, pg_hint_plan, pg_cron, PostGIS
 
 set -e
 
@@ -59,6 +58,9 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
 
     -- 底层页面检查 (深度调试)
     CREATE EXTENSION IF NOT EXISTS pageinspect;
+
+    -- PostGIS 空间数据处理 (地理信息/距离计算/区域查询)
+    CREATE EXTENSION IF NOT EXISTS postgis;
 EOSQL
 
 echo "[extensions] Contrib extensions enabled"
