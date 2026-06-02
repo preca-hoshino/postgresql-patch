@@ -76,12 +76,6 @@ EOSQL
 
 echo "[extensions] pg_cron enabled"
 
-# 地理空间数据
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
-    CREATE EXTENSION IF NOT EXISTS postgis;
-    CREATE EXTENSION IF NOT EXISTS postgis_topology;
-EOSQL
-
 echo "[extensions] Compiled extensions enabled"
 
 # ===== 4. 验证 =====
