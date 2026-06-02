@@ -18,6 +18,10 @@ RUN apk add --no-cache \
         build-base \
         postgresql-dev \
         git \
+        zlib-dev \
+        openssl-dev \
+        lz4-dev \
+        zstd-dev \
     && sed -i 's/with_llvm[[:space:]]*=[[:space:]]*yes/with_llvm = no/g' /usr/local/lib/postgresql/pgxs/src/Makefile.global
 
 # 1. pgvector (向量相似度搜索)
