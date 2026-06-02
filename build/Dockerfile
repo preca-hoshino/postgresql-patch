@@ -36,6 +36,7 @@ RUN apk add --no-cache \
         curl \
         curl-dev \
         tiff-dev \
+        perl \
     && sed -i 's/with_llvm[[:space:]]*=[[:space:]]*yes/with_llvm = no/g' /usr/local/lib/postgresql/pgxs/src/Makefile.global \
     && ln -sf /usr/lib/libz.so /usr/local/lib/libz.so \
     && ln -sf /usr/lib/libssl.so /usr/local/lib/libssl.so \
