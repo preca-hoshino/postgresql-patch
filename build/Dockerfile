@@ -53,8 +53,10 @@ RUN cd /tmp \
     && echo "pg_cron built successfully"
 
 # 4. pg_hint_plan (执行计划干预 — 强制指定索引/连接顺序)
-RUN cd /tmp \
-    && git clone --depth 1 https://github.com/ossc-db/pg_hint_plan.git \
+#    pg_hint_plan 需要匹配 PG 主版本号的分支
+RUN PG_MAJOR=$(echo "${PG_VERSION}" | cut -d. -f1) \
+    && cd /tmp \
+    && git clone --branch PG${PG_MAJOR} --depth 1 https://github.com/ossc-db/pg_hint_plan.git \
     && cd pg_hint_plan \
     && make -j$(nproc) \
     && make install \
