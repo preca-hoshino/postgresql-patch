@@ -84,8 +84,12 @@ RUN cd /tmp \
     && tar xzf postgis.tar.gz \
     && cd postgis-${POSTGIS_VERSION} \
     && ./configure --with-pgconfig=$(which pg_config) --without-raster --without-sfcgal --without-topology \
-    && make -j$(nproc) \
-    && make install \
+    && make -C liblwgeom -j$(nproc) \
+    && make -C liblwgeom install \
+    && make -C postgis -j$(nproc) \
+    && make -C postgis install \
+    && make -C extensions -j$(nproc) \
+    && make -C extensions install \
     && echo "PostGIS ${POSTGIS_VERSION} built successfully" \
     && ls -la $(pg_config --pkglibdir)/postgis*.so \
     && ls -la $(pg_config --sharedir)/extension/postgis*.control
