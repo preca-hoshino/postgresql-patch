@@ -101,12 +101,12 @@ COPY init-extensions.sh /docker-entrypoint-initdb.d/01-extensions.sh
 # Verify extensions are loadable
 RUN echo "=== Installed extensions ===" \
     && echo "--- pgvector ---" \
-    && ls -la /usr/local/lib/postgresql/vector*.so \
-    && ls -la /usr/local/share/postgresql/extension/vector*.control \
+    && ls -la /usr/local/lib/postgresql/vector.so \
+    && ls -la /usr/local/share/postgresql/extension/vector.control \
     && echo "--- pg_repack ---" \
-    && ls -la /usr/local/lib/postgresql/pg_repack*.so \
+    && ls -la /usr/local/lib/postgresql/pg_repack.so \
     && echo "--- pg_cron ---" \
-    && ls -la /usr/local/lib/postgresql/cron*.so \
+    && ls -la /usr/local/lib/postgresql/cron.so \
     && echo "--- pg_hint_plan ---" \
-    && ls -la /usr/local/lib/postgresql/hint_plan*.so \
+    && ls -la /usr/local/lib/postgresql/pg_hint_plan.so \
     && echo "=== All extensions verified ==="
