@@ -73,18 +73,15 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
     CREATE EXTENSION IF NOT EXISTS pg_hint_plan;
 EOSQL
 
-# pg_cron 需要在 shared_preload_libraries 中声明
-# pg_cron.so 加载后会注册 cron.* 参数，此时 cron.database_name 生效
-# CREATE EXTENSION 会导致 GUC 参数检查失败（因为 .so 尚未通过 preload 加载）
-# 所以 pg_cron 必须通过 postgresql.conf 中的 shared_preload_libraries 预加载
+# pg_cron: 需要先设置 cron.database_name，再 CREATE EXTENSION
+# pg_cron.so 通过 shared_preload_libraries 已加载，GUC 参数已注册
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
-    -- 定时任务调度 (已在 shared_preload_libraries 中加载)
+    SET cron.database_name = '${DB_NAME}';
     CREATE EXTENSION IF NOT EXISTS pg_cron;
 EOSQL
 
-# pg_cron 配置 (在 extension 已通过 shared_preload 加载后设置)
+# 地理空间数据
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
-    -- 地理空间数据
     CREATE EXTENSION IF NOT EXISTS postgis;
     CREATE EXTENSION IF NOT EXISTS postgis_topology;
 EOSQL
