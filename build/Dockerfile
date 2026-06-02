@@ -83,16 +83,7 @@ ARG PG_VERSION=18.4
 ARG PGVECTOR_VERSION=0.8.2
 
 LABEL maintainer="PostgreSQL Patch Community"
-LABEL description="PostgreSQL ${PG_VERSION} + 常用扩展 (pgvector, pg_repack, pg_hint_plan, pg_cron, PostGIS, contrib)"
-
-# 安装 PostGIS (使用 Alpine 官方包，确保与 postgresql 版本兼容)
-# Alpine 包安装到 /usr/share/postgresql/，但 PG 从 /usr/local/share/postgresql/ 查找
-RUN apk add --no-cache postgis \
-    && mkdir -p /usr/local/share/postgresql/extension \
-    && mkdir -p /usr/local/lib/postgresql \
-    && ln -sf /usr/share/postgresql/extension/postgis*.control /usr/local/share/postgresql/extension/ \
-    && ln -sf /usr/share/postgresql/extension/postgis*.sql /usr/local/share/postgresql/extension/ \
-    && ln -sf /usr/lib/postgresql/postgis*.so /usr/local/lib/postgresql/
+LABEL description="PostgreSQL ${PG_VERSION} + 常用扩展 (pgvector, pg_repack, pg_hint_plan, pg_cron, contrib)"
 LABEL org.opencontainers.image.title="PostgreSQL Patch"
 LABEL org.opencontainers.image.description="PostgreSQL ${PG_VERSION} with pre-compiled extensions for 1Panel"
 LABEL org.opencontainers.image.version="${PG_VERSION}-alpine-patch"
@@ -118,6 +109,4 @@ RUN echo "=== Installed extensions ===" \
     && ls -la /usr/local/lib/postgresql/cron*.so \
     && echo "--- pg_hint_plan ---" \
     && ls -la /usr/local/lib/postgresql/hint_plan*.so \
-    && echo "--- PostGIS ---" \
-    && ls -la /usr/local/lib/postgresql/postgis*.so 2>/dev/null || ls -la /usr/lib/postgresql/postgis*.so 2>/dev/null || echo "  (installed via apk, checking)" \
     && echo "=== All extensions verified ==="
