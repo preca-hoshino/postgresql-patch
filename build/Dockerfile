@@ -17,7 +17,8 @@ ARG PGVECTOR_VERSION=0.8.2
 RUN apk add --no-cache \
         build-base \
         postgresql-dev \
-        git
+        git \
+    && sed -i 's/with_llvm[[:space:]]*=[[:space:]]*yes/with_llvm = no/g' /usr/local/lib/postgresql/pgxs/src/Makefile.global
 
 # 1. pgvector (向量相似度搜索)
 RUN cd /tmp \
